@@ -1,0 +1,42 @@
+# Весь бэкенд пуш-уведомлений: PostgreSQL + worker (sync/reminder + HTTP register)
+#
+# Запуск:  docker compose up -d --build
+# Логи:    docker compose logs -f server
+# Останов: docker compose down (данные БД остаются в volume pgdata)
+#
+# Первое изменение паролей/секрета делайте до первого тага в прод —
+# и синхронизируйте POSTGRES_PASSWORD c DATABASE_URL в секции server.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-chrt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-chrt_push}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-chrt} -d ${POSTGRES_DB:-chrt_push}']
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  server:
+    image: ghcr.io/rvnzz/pushtt:latest
+    build: .
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-chrt}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-chrt_push}
+      PORT: '4000'
+      TIMET_BASE_URL: ${TIMET_BASE_URL:-https://timet.eremin.tech}
+      DEBUG_KEY: ${DEBUG_KEY:-}
+    ports:
+      - '${SERVER_PORT:-4000}:4000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:
