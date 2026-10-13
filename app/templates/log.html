@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h5>Журнал пу-ш</h5>
+      <table class="table table-deadline align-middle mb-0">
+        <thead><tr><th>Когда</th><th>Источник</th><th>Заголовок</th><th>Текст</th><th>Адресатов</th></tr></thead>
+        <tbody>
+        {% for row in pushes %}
+          <tr>
+            <td>{{ row.created_at.strftime('%d.%m %H:%M') }}</td>
+            <td><span class="badge text-bg-secondary badge-soft">{{ row.source }}</span></td>
+            <td>{{ row.title }}</td>
+            <td class="text-secondary">{{ row.body }}</td>
+            <td>{{ row.recipients }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-secondary">Пусто.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h5>Изменения расписания</h5>
+      <table class="table table-deadline align-middle mb-0">
+        <thead><tr><th>Замечено</th><th>Корпус</th><th>Дата</th><th>Кому</th><th>Адресатов</th></tr></thead>
+        <tbody>
+        {% for change in changes %}
+          <tr>
+            <td>{{ change.detected_at.strftime('%d.%m %H:%M') }}</td>
+            <td>{{ change.building_slug }}</td>
+            <td>{{ timet.format_date(change.date.isoformat()) }}</td>
+            <td>{{ change.target_label }} <span class="text-secondary small">({{ change.target_key }})</span></td>
+            <td>{{ change.recipients }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5" class="text-secondary">Изменений нет.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

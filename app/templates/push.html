@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block content %}
+<h3 class="mb-4">Ручной push</h3>
+
+{% if sent %}
+  <div class="alert alert-success py-2">Отправлено подписчикам: {{ count }}</div>
+{% endif %}
+
+<div class="card p-4">
+  <form method="post" action="/push/send">
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label small">Кому</label>
+        <select class="form-select" name="target_type" id="target_type" onchange="onTypeChange()">
+          <option value="all">всем подписчикам</option>
+          <option value="group">группе</option>
+          <option value="teacher">преподавателю</option>
+        </select>
+      </div>
+
+      <div class="col-md-4 group-row d-none">
+        <label class="form-label small">Корпус</label>
+        <select class="form-select" id="building" name="building">
+          {% for slug, title in buildings %}
+            <option value="{{ slug }}" {% if slug == 'fulltime' %}selected{% endif %}>{{ title }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-md-4 group-row d-none">
+        <label class="form-label small">Цель</label>
+        <select class="form-select" name="group_id" id="group_id">
+          <option value="0">— выберите корпус —</option>
+        </select>
+      </div>
+
+      <div class="col-md-4 teacher-row d-none">
+        <label class="form-label small">Преподаватель</label>
+        <select class="form-select" name="teacher_id" id="teacher_id">
+          <option value="0">— преподаватели из текущей недели —</option>
+        </select>
+      </div>
+
+      <div class="col-md-6">
+        <label class="form-label small">Заголовок</label>
+        <input class="form-control" name="title" placeholder="Расписание ЧРТ" maxlength="64">
+      </div>
+      <div class="col-md-6">
+        <label class="form-label small">Текст</label>
+        <input class="form-control" name="body" placeholder="Обновления в расписании" maxlength="200">
+      </div>
+    </div>
+
+    <button class="btn btn-primary mt-4">Отправить</button>
+    <span class="text-secondary small ms-2">Ничего не указали — отправится дефолтный текст.</span>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function onTypeChange() {
+  const test = document.getElementById('target_type').value;
+  document.querySelectorAll('.group-row').forEach(el =>
+    el.classList.toggle('d-none', test !== 'group'));
+  document.querySelectorAll('.teacher-row').forEach(el =>
+    el.classList.toggle('d-none', test !== 'teacher'));
+  if (test === 'group') {
+    fetch('/admin/targets.json?building=' + document.getElementById('building').value,
+        {credentials: 'include'})
+      .then(r => r.json())
+      .then(data => {
+        const select = document.getElementById('group_id');
+        select.innerHTML = data.groups
+          .map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+      });
+  }
+  if (test === 'teacher') {
+    Promise.all(document.querySelectorAll('#teacher_id') ? fetch('/admin/targets.json?building=fulltime', {credentials: 'include'}).then(r => r.json()).then(data => data.teachers) : [])
+      .then(([teachers]) => {
+        const seen = new Map();
+        const select = document.getElementById('teacher_id');
+        select.innerHTML = teachers
+          .filter(([id, name]) => !seen.has(id) && seen.set(id, name))
+          .map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+      });
+  }
+}
+document.getElementById('building').addEventListener('change', onTypeChange);
+</script>
+{% endblock %}

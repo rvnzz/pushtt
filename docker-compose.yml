@@ -1,11 +1,8 @@
-# Весь бэкенд пуш-уведомлений: PostgreSQL + worker (sync/reminder + HTTP register)
+# Пуш-воркер + админ-дэшборд расписания (FastAPI) + PostgreSQL
 #
-# Запуск:  docker compose up -d --build
-# Логи:    docker compose logs -f server
-# Останов: docker compose down (данные БД остаются в volume pgdata)
-#
-# Первое изменение паролей/секрета делайте до первого тага в прод —
-# и синхронизируйте POSTGRES_PASSWORD c DATABASE_URL в секции server.
+# Запуск:    docker compose up -d --build
+# Логи:      docker compose logs -f server
+# Пароли:    создайте .env (см. .env.example)
 
 services:
   db:
@@ -31,6 +28,9 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-chrt}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-chrt_push}
       PORT: '4000'
       TIMET_BASE_URL: ${TIMET_BASE_URL:-https://timet.eremin.tech}
+      # Пароль админ-дэшборда (страница /login)
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
+      # Тест push-канала: POST /debug/simulate c заголовком X-Debug-Key
       DEBUG_KEY: ${DEBUG_KEY:-}
     ports:
       - '${SERVER_PORT:-4000}:4000'

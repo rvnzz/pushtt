@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between mb-4">
+  <h3 class="mb-0">Редактирование звонков — {{ schedule.name }}</h3>
+  <a class="btn btn-outline-secondary btn-sm" href="/bells">← все шаблоны</a>
+</div>
+
+<form method="post" action="/bells/save">
+  <input type="hidden" name="id" value="{{ schedule.id }}">
+  <div class="row g-2 mb-3">
+    <div class="col-md-5">
+      <label class="form-label small">Название</label>
+      <input class="form-control" name="name" value="{{ schedule.name }}" required>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small">Тип шаблона</label>
+      <select class="form-select" name="kind">
+        <option value="common" {% if schedule.kind == 'common' %}selected{% endif %}>общий день</option>
+        <option value="monday" {% if schedule.kind == 'monday' %}selected{% endif %}>понедельник</option>
+        <option value="hour" {% if schedule.kind == 'hour' %}selected{% endif %}>сокращённый</option>
+        <option value="custom" {% if schedule.kind == 'custom' %}selected{% endif %}>особый</option>
+      </select>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" name="is_default" id="default" {% if schedule.is_default %}checked{% endif %}>
+        <label class="form-check-label" for="default">По умолчанию для своего типа</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-3 mb-3">
+    <table class="table table-deadline" id="itemsTable">
+      <thead>
+        <tr><th>Тип</th><th>№ пары</th><th>Начало</th><th>Конец</th><th>Подпись (для перерыва)</th><th></th></tr>
+      </thead>
+      <tbody>
+      {% for item in schedule['items'] %}
+        <tr>
+          <td>
+            <select class="form-select form-select-sm" name="type_{{ loop.index0 }}">
+              <option value="pair" {% if item.entry_type == 'pair' %}selected{% endif %}>пара</option>
+              <option value="break" {% if item.entry_type == 'break' %}selected{% endif %}>перерыв</option>
+            </select>
+          </td>
+          <td><input type="number" class="form-control form-control-sm" name="pair_{{ loop.index0 }}" value="{{ item.pair_number or '' }}"></td>
+          <td><input type="time" class="form-control form-control-sm" name="start_{{ loop.index0 }}" value="{{ item.start_time }}"></td>
+          <td><input type="time" class="form-control form-control-sm" name="end_{{ loop.index0 }}" value="{{ item.end_time }}"></td>
+          <td><input class="form-control form-control-sm" name="label_{{ loop.index0 }}" value="{{ item.label or '' }}"></td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">×</button></td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addRow()">+ добавить позицию</button>
+  </div>
+
+  <button class="btn btn-primary">Сохранить</button>
+</form>
+
+{% block scripts %}
+<script>
+let nextIndex = {{ (schedule['items'] | length) + 10 }};
+function addRow() {
+  const i = nextIndex++;
+  document.querySelector('#itemsTable tbody').insertAdjacentHTML('beforeend', `
+    <tr>
+      <td><select class="form-select form-select-sm" name="type_${i}">
+        <option value="pair">пара</option><option value="break">перерыв</option></select></td>
+      <td><input type="number" class="form-control form-control-sm" name="pair_${i}"></td>
+      <td><input type="time" class="form-control form-control-sm" name="start_${i}"></td>
+      <td><input type="time" class="form-control form-control-sm" name="end_${i}"></td>
+      <td><input class="form-control form-control-sm" name="label_${i}"></td>
+      <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()">×</button></td>
+    </tr>`);
+}
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,18 +1,15 @@
-FROM node:22-alpine
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Зависимости (кэш слоя по package-lock)
-COPY package.json package-lock.json ./
-RUN npm ci
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Код
-COPY tsconfig.json ./
-COPY src ./src
+COPY app ./app
 
 EXPOSE 4000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s \
-  CMD node -e "fetch('http://127.0.0.1:' + (process.env.PORT || 4000) + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=25s \
+  CMD python -c "import urllib.request, sys, os; sys.exit(0 if urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\", \"4000\")}/health', timeout=4).status == 200 else 1)"
 
-CMD ["npx", "tsx", "src/index.ts"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "4000"]

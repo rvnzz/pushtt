@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="mb-0">Дэшборд</h3>
+    <div class="text-secondary">Текущая неделя: {{ week }}</div>
+  </div>
+  <div class="btn-group">
+    <form method="post" action="/admin/sync">
+      <button class="btn btn-outline-primary btn-sm">Обновить расписание сейчас</button>
+    </form>
+    <form method="post" action="/admin/simulate">
+      <button class="btn btn-outline-warning btn-sm" title="Сбросит один хэш и вызовет массовые пуши — проверка канала">Тест push</button>
+    </form>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card p-3 h-100"><div class="text-secondary small">Подписчики</div>
+      <div class="fs-2 fw-semibold">{{ stats.total }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 h-100"><div class="text-secondary small">Следят за изменениями</div>
+      <div class="fs-2 fw-semibold">{{ stats.changes }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 h-100"><div class="text-secondary small">Напоминание на завтра</div>
+      <div class="fs-2 fw-semibold">{{ stats.tomorrow }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card p-3 h-100">
+      <div class="text-secondary small">Последний синк</div>
+      {% if last_sync %}
+        <div class="fs-5">{{ last_sync.created_at.strftime('%H:%M') }}</div>
+        <div class="small {{ 'text-success' if last_sync.ok else 'text-danger' }}">
+          {{ last_sync.message or ('ОК' if last_sync.ok else 'Ошибка') }}
+        </div>
+      {% else %}<div class="text-secondary">ещё не выполнялся</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card p-3">
+  <h5>Последние изменения расписания</h5>
+  <table class="table table-deadline mb-0 align-middle">
+    <thead><tr><th>Замечено</th><th>Корпус</th><th>Дата</th><th>Кому</th><th>Пуши</th></tr></thead>
+    <tbody>
+    {% for change in changes %}
+      <tr>
+        <td>{{ change.detected_at.strftime('%d.%m %H:%M') }}</td>
+        <td>{{ change.building_slug }}</td>
+        <td>{{ timet.format_date(change.date.isoformat()) }}</td>
+        <td><span class="badge text-bg-secondary badge-soft">{{ change.target_key }}</span> {{ change.target_label }}</td>
+        <td>{{ change.recipients }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="5" class="text-secondary">Изменений пока не было.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

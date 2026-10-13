@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru" data-bs-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Пуш-дэшборд ЧРТ{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #121417; }
+    .card { border-radius: 1rem; border: none; }
+    .table-deadline td { vertical-align: middle; }
+    .badge-soft { font-weight: 600; }
+    .nav-pills .nav-link.active { background: #2e7cf6; }
+  </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg border-bottom border-body bg-body">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand fw-bold" href="/">⚖ pushtt</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav me-auto mb-2">
+        <li class="nav-item"><a class="nav-link" href="/">Дашборд</a></li>
+        <li class="nav-item"><a class="nav-link" href="/schedule">Расписание</a></li>
+        <li class="nav-item"><a class="nav-link" href="/bells">Звонки</a></li>
+        <li class="nav-item"><a class="nav-link" href="/push">Отправить пуш</a></li>
+        <li class="nav-item"><a class="nav-link" href="/log">Журнал</a></li>
+      </ul>
+      <form method="post" action="/logout" class="d-flex">
+        <button class="btn btn-outline-secondary btn-sm">Выйти</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<main class="container px-4 py-4">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

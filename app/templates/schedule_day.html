@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <h3 class="mb-0">Расписание дня</h3>
+  <form method="get" action="/schedule" class="row g-2">
+    <div class="col-auto">
+      <input type="date" class="form-control" name="date" value="{{ date }}">
+    </div>
+    <div class="col-auto">
+      <select class="form-select" name="building">
+        {% for slug, title in buildings %}
+          <option value="{{ slug }}" {% if slug == building %}selected{% endif %}>{{ title }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-primary">Показать</button></div>
+  </form>
+</div>
+
+<div class="alert alert-info py-2">
+  Звонки: <b>{{ bell.name }}</b>
+  <span class="badge text-bg-light badge-soft">
+    {% if bell.source == 'override' %}переопределение{% elif bell.kind == 'monday' %}понедельник{% else %}общий день{% endif %}
+  </span>
+</div>
+
+<div class="card p-3">
+  <table class="table table-deadline mb-0">
+    <thead><tr><th style="width:150px">Время</th><th>Пара</th><th>Предмет, преподаватель, кабинет</th></tr></thead>
+    <tbody>
+    {% for target in targets %}
+      {% for pair in target.pairs %}
+        <tr {% if loop.first %}class="border-top border-secondary-subtle"{% endif %}>
+          <td class="text-nowrap text-secondary">
+            {% if pair.time_from %}
+              {{ pair.time_from }}–{{ pair.time_to }}
+            {% else %}пара {{ pair.number }}{% endif %}
+          </td>
+          <td class="fw-bold">{{ pair.number }}</td>
+          <td>
+          {% for lesson in pair.lessons %}
+            <div {% if pair.is_split %}{% if loop.index0 == 0 %}border-bottom pb-1 mb-1{% endif %}{% endif %}>
+              {% if pair.is_split %}<span class="badge text-bg-secondary me-1">{{ lesson.subgroup }}</span>{% endif %}
+              {{ lesson.subject }}
+              <span class="text-secondary">· {{ lesson.teacher }} · ауд. {{ lesson.room }}</span>
+            </div>
+          {% endfor %}
+          </td>
+        </tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="3" class="text-secondary">Занятий нет или день вне диапазона.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<p class="text-secondary small mt-3">Группы c парами: {{ targets | length }}</p>
+{% endblock %}

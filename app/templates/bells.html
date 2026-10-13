@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="d-flex justify-content-between mb-4">
+  <h3 class="mb-0">Расписание звонков</h3>
+  <form method="post" action="/bells/save" class="row g-2">
+    <input type="hidden" name="id" value="0">
+    <div class="col-auto"><input name="name" class="form-control" placeholder="Новый шаблон…"></div>
+    <div class="col-auto">
+      <select name="kind" class="form-select">
+        <option value="common" selected>общий день</option>
+        <option value="monday">понедельник</option>
+        <option value="hour">сокращённый</option>
+        <option value="custom">особый</option>
+      </select>
+    </div>
+    <div class="col-auto"><button class="btn btn-primary">Создать</button></div>
+  </form>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h5>Шаблоны</h5>
+      <table class="table table-deadline align-middle">
+        <thead><tr><th>Название</th><th>Тип</th><th>Позиций</th><th>Действия</th></tr></thead>
+        <tbody>
+        {% for schedule in schedules %}
+          <tr>
+            <td>{{ schedule.name }} {% if schedule.is_default %}<span class="badge text-bg-success badge-soft">по умолчанию</span>{% endif %}</td>
+            <td class="text-secondary">{{ schedule.kind }}</td>
+            <td>{{ schedule.items_count }}</td>
+            <td class="d-flex gap-1">
+              <a class="btn btn-sm btn-outline-primary" href="/bells/{{ schedule.id }}/edit">Редактировать</a>
+              <form method="post" action="/bells/delete">
+                <input type="hidden" name="id" value="{{ schedule.id }}">
+                <button class="btn btn-sm btn-outline-danger">Удалить</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card p-3 mb-4">
+      <h5>Дни по умолчанию</h5>
+      <form method="post" action="/bells/defaults">
+        <div class="mb-2">
+          <label class="form-label small">Понедельник</label>
+          <select class="form-select" name="monday_id">
+            {% for schedule in schedules if schedule.kind == 'monday' or schedule.is_default %}
+              {% set monday_default = (schedule.kind == 'monday' and schedule.is_default) %}
+              <option value="{{ schedule.id }}" {% if monday_default %}selected{% endif %}>{{ schedule.name }} ({{ schedule.kind }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-2">
+          <label class="form-label small">Вторник–Суббота</label>
+          <select class="form-select" name="common_id">
+            {% for schedule in schedules if schedule.kind != 'monday' %}
+              <option value="{{ schedule.id }}" {% if schedule.kind == 'common' and schedule.is_default %}selected{% endif %}>{{ schedule.name }} ({{ schedule.kind }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button class="btn btn-outline-primary btn-sm">Сохранить</button>
+      </form>
+    </div>
+
+    <div class="card p-3">
+      <h5>Переопределения</h5>
+      <form method="post" action="/overrides/save" class="row g-2 mb-3">
+        <div class="col-auto"><input type="date" class="form-control" name="date" value="{{ now_iso }}"></div>
+        <div class="col-auto">
+          <select class="form-select" name="schedule_id">
+            {% for schedule in schedules %}
+              <option value="{{ schedule.id }}">{{ schedule.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-auto"><button class="btn btn-outline-primary btn-sm">На дату</button></div>
+      </form>
+
+      <table class="table table-deadline align-middle mb-0">
+        <thead><tr><th>Дата</th><th>Шаблон</th><th></th></tr></thead>
+        <tbody>
+        {% for row in overrides %}
+          <tr>
+            <td>{{ timet.format_date(row.date.isoformat()) }}</td>
+            <td>{{ row.name }}</td>
+            <td>
+              <form method="post" action="/overrides/delete">
+                <input type="hidden" name="date" value="{{ row.date }}">
+                <button class="btn btn-sm btn-outline-danger">Снять</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="3" class="text-secondary">Переопределений нет.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

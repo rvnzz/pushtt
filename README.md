@@ -1,53 +1,63 @@
-# chrt-tt worker — пуш-уведомления расписания (pushtt)
+# pushtt — пуш-воркер + админ-дэшборд расписания ЧРТ
 
-Самостоятельный сервис: собирает расписание с timet.eremin.tech, сравнивает со
-снапшотами (хэши по группе/преподавателю) и рассылает push через Expo Push API.
-Подписки хранятся в PostgreSQL. Всё работает в Docker.
+FastAPI-сервис: собирает расписание с timet.eremin.tech, сравнивает со снапшотами,
+рассылает push (Expo Push API) и даёт админ-дэшборд:
 
-## Прод: из GHCR
+- **Дэшборд** — подписчики, последний синк, кнопка «Обновить расписание сейчас», тест push-канала;
+- **Расписание дня** — по корпусам, с подстановкой времени звонков;
+- **Звонки** — шаблоны (понедельник/общий день/сокращённый «пары по часу»), значения по умолчанию и переопределения на конкретную дату (в т.ч. «понедельник по общему расписанию»);
+- **Ручной push** — всем / группе / преподавателю;
+- **Журнал** — история пушей и изменений расписания.
 
-```bash
-echo 'POSTGRES_PASSWORD=<пароль>' > .env
-docker compose pull   # image ghcr.io/rvnzz/pushtt:latest
-docker compose up -d
-```
-
-## Запуск из исходников
+## Запуск (Docker Compose)
 
 ```bash
+cp .env.example .env     # поменяйте ADMIN_PASSWORD и (опц.) DEBUG_KEY
 docker compose up -d --build
 docker compose logs -f server
 ```
 
-Сервисы:
-- `db` — PostgreSQL 17 (volume `pgdata`, схема создается автоматически);
-- `server` — worker + HTTP (порт `4000`, `SERVER_PORT` переопределяет).
+- Веб: `http://localhost:4000` → вход по `ADMIN_PASSWORD` (`/login`).
+- БД: PostgreSQL 17 c volume `pgdata`, схема и seed-звонки создаются сами.
 
-## HTTP
+## Endpoints
 
+Приложение (без auth):
+- `POST /register`, `POST /unregister` — подписки (токен, роль, цель, настройки напоминаний)
+- `GET  /api/bells?date=YYYY-MM-DD` — активное расписание звонков на дату (для будущего использования в приложении)
 - `GET  /health`
-- `POST /register`   — `{expoPushToken, role, buildingSlug, targetId, targetLabel, changesEnabled, tomorrowHour, tzOffsetMinutes}`
-- `POST /unregister` — `{expoPushToken}`
-- `POST /debug/simulate` — тест push-канала (заголовок `X-Debug-Key: <DEBUG_KEY>`); body `{ "targetKey": "g:10" | "t:33" }` (по умолчанию `g:10`).
 
-Планировщики: синк каждые 15 мин, напоминания «на завтра» ежечасно на 5-й минуте.
+Дэшборд (после `/login`):
+- `/`, `/schedule?date=&building=`, `/bells`, `/bells/{id}/edit`, `/push`, `/log`
+- `POST /admin/sync` — синк вручную; `POST /admin/simulate` — тест push-канала
+- `GET  /debug/simulate?key=<DEBUG_KEY>` — тест push-канала из curl*
 
-## Проверка
+## Проверка push-канала
 
-```bash
-curl -s localhost:4000/health
+1. В приложении включите «Уведомления» — появится подписка (`/register`).
+2. На дэшборде нажмите «Тест push» — сервер уберёт хэш цели подписки из снапшотов
+   и синк отправит реальный пуш «Опубликовано расписание …» на устройство.
 
-curl -s -X POST localhost:4000/register -H 'Content-Type: application/json' -d '{
-  "expoPushToken":"ExponentPushToken[...]", "role":"student",
-  "buildingSlug":"fulltime", "targetId":10, "targetLabel":"Ис-103",
-  "changesEnabled":true, "tomorrowHour":null, "tzOffsetMinutes":-180 }'
+## Планировщики (внутри контейнера)
 
-curl -s -X POST localhost:4000/debug/simulate \
-  -H 'Content-Type: application/json' -H 'X-Debug-Key: ваш-секрет' -d '{}'
-```
+- Синк расписания каждые 15 минут (текущая + следующая недели),
+  изменения записываются в `schedule_changes`, пуши — подписчикам цели.
+- «Расписание на завтра» — ежечасно на 5-й минуте, по локальному часу
+  подписчика (`tzOffsetMinutes`), со временем первой пары из актуальных звонков.
+
+## Схема БД (PostgreSQL)
+
+`subscriptions`, `schedule_hashes` — работа контура;
+`bell_schedules` / `bell_items` / `bell_overrides` — звонки;
+`schedule_changes`, `push_log`, `sync_log` — журнал.
+
+## CI
+
+GitHub Actions (`.github/workflows/docker.yml`) собирает и пушит образ в
+`ghcr.io/rvnzz/pushtt:latest` на каждый push в `main`.
 
 ## Приложение (chrt-tt)
 
-Адрес сервера — `EXPO_PUBLIC_PUSH_API_URL` (или константа в `src/api/settings.ts`).
-Приложение шлет токен только по HTTPS: перед контейнером используйте Caddy/nginx
-с сертификатом (443 → 4000).
+Адрес сервера задаётся в `src/api/settings.ts` (`EXPO_PUBLIC_PUSH_API_URL`).
+Приложение шлёт токен только по HTTPS — перед контейнером нужен Caddy/nginx
+с сертификатом (443 → 4000), например `push.schrt.ru`.
