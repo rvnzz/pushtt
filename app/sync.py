@@ -1,6 +1,12 @@
-"""Синк расписания: diff со снапшотами + мгновенные пуши подписчикам."""
+"""Синк расписания: diff со снапшотами + пуш подписчикам.
+
+Условие доставки: изменения видны только на «завтра» подписчика
+(в его локальной зоне, через tz_offset_minutes) — пуш отсутствует для
+изменений на сегодня/следующую неделю в абстракции.
+"""
 from __future__ import annotations
 
+import datetime as dt
 import time
 
 from . import db, push, timet
@@ -81,6 +87,10 @@ def _run_sync() -> tuple[int, int]:
                 body = f'{label} — {timet.format_date(snapshot["date"])}'
 
                 for subscriber in subscribers:
+                    # пуш только когда изменение касается ЗАВТРА подписчика
+                    if snapshot['date'] != _local_tomorrow(subscriber):
+                        continue
+
                     messages.append({
                         'to': subscriber['expo_push_token'],
                         'title': title,
@@ -119,3 +129,10 @@ def _collect_names(weeks: list[dict]):
                     names[f't:{teacher["id"]}'] = teacher['name']
 
     return lambda key, target_id: names.get(f'{key}:{target_id}')
+
+
+def _local_tomorrow(subscriber: dict) -> str:
+    """Локальный «завтра» подписчика (по его utc-offset)."""
+    shifted = dt.datetime.now(dt.timezone.utc) - dt.timedelta(
+        minutes=subscriber['tz_offset_minutes'])
+    return (shifted.date() + dt.timedelta(days=1)).isoformat()
