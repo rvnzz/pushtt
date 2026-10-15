@@ -420,6 +420,73 @@ def log_page(request: Request, _: None = Depends(admin_guard)):
 # ---------------------------------------------------- публичные эндпойнты приложения ---
 
 
+
+@app.get('/api/widget')
+def api_widget(group: int = 0, building: str = 'fulltime', date: str = ''):
+    """Компактные данные для домашнего виджета: сегодня + завтра одной пачкой."""
+    date = date or timet.today_iso()
+    tomorrow = timet.add_days_iso(date, 1)
+
+    out_days = []
+    for label, target_date in (('today', date), ('tomorrow', tomorrow)):
+        monday = timet.monday_of(target_date)
+        week = sync.cached_weeks.get(monday) or timet.fetch_all_week(monday)
+        sync.cached_weeks[monday] = week
+
+        pairs = []
+        for day in week['days']:
+            if day['date'] != target_date:
+                continue
+            building_day = next(
+                (b for b in day['buildings'] if b['building']['slug'] == building), None
+            )
+            if not building_day:
+                continue
+            schedule = next(
+                (g for g in building_day.get('group_schedules', []) if g['id'] == group),
+                None,
+            )
+            if not schedule:
+                continue
+            for pair in schedule.get('pairs', []):
+                if not pair.get('has_content'):
+                    continue
+                for lesson in pair.get('lessons', []):
+                    pairs.append({
+                        'n': pair['number'],
+                        'subject': lesson['subject'],
+                        'teacher': lesson['teacher'],
+                        'room': lesson['room'],
+                        'subgroup': lesson.get('subgroup'),
+                        'isSplit': pair.get('is_split', False),
+                    })
+
+        # звонки: время начала/конца пары по её номеру
+        with db.pool().connection() as conn:
+            bell = bells.resolve_for_date(conn, target_date)
+        pair_time = {
+            item['pair']: {'start': item['start'], 'end': item['end']}
+            for item in bell.get('items', [])
+            if item['type'] == 'pair' and item['pair'] is not None
+        }
+        for p in pairs:
+            t = pair_time.get(p['n'])
+            p['start'] = t['start'] if t else ''
+            p['end'] = t['end'] if t else ''
+
+        today = timet.today_iso()
+        prefix = 'СЕГОДНЯ' if target_date == today else ('ЗАВТРА' if target_date == timet.add_days_iso(today, 1) else timet.format_date(target_date))
+
+        out_days.append({
+            'date': target_date,
+            'label': f'{prefix} · {timet.format_date(target_date)}',
+            'published': bool(pairs),
+            'pairs': pairs,
+        })
+
+    return JSONResponse({'days': out_days})
+
+
 @app.get('/health')
 def health():
     return {'ok': True}
