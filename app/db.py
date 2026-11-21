@@ -343,6 +343,25 @@ def recent_pushes(limit: int = 25) -> list[dict]:
         ).fetchall()
 
 
+def subscribers_by_target() -> list[dict]:
+    """Подписки, сгруппированные по цели (роль + target): сколько устройств и какие настройки."""
+    with pool().connection() as conn:
+        return conn.execute(
+            """
+            SELECT role, target_id, target_label, building_slug,
+                   count(*) AS tokens,
+                   count(*) FILTER (WHERE changes_enabled) AS changes,
+                   count(*) FILTER (WHERE tomorrow_hour IS NOT NULL) AS tomorrow,
+                   array_agg(DISTINCT tomorrow_hour) FILTER (WHERE tomorrow_hour IS NOT NULL)
+                     AS tomorrow_hours,
+                   max(updated_at) AS last_updated
+            FROM subscriptions
+            GROUP BY role, target_id, target_label, building_slug
+            ORDER BY role, target_label, building_slug
+            """
+        ).fetchall()
+
+
 def subscribers_stats() -> dict:
     with pool().connection() as conn:
         (total,) = conn.execute('SELECT count(*) FROM subscriptions').fetchone().values()

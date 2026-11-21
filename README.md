@@ -28,7 +28,7 @@ docker compose logs -f server
 - `GET  /health`
 
 Дэшборд (после `/login`):
-- `/`, `/schedule?date=&building=`, `/bells`, `/bells/{id}/edit`, `/push`, `/log`
+- `/`, `/subscribers`, `/schedule?date=&building=`, `/bells`, `/bells/{id}/edit`, `/push`, `/log`
 - `POST /admin/sync` — синк вручную; `POST /admin/simulate` — тест push-канала
 - `GET  /debug/simulate?key=<DEBUG_KEY>` — тест push-канала из curl*
 

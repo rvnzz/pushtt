@@ -129,6 +129,30 @@ def dashboard(request: Request, _: None = Depends(admin_guard)):
         ),
     )
 
+# --------------------------------------------------------------- подписчики ---
+
+
+BUILDING_NAMES = {
+    'fulltime': 'Очное',
+    'parttimefulltime': 'Очно-заочное',
+    'parttime': 'Заочное',
+    '*': 'Все корпуса',
+}
+
+
+@app.get('/subscribers', response_class=HTMLResponse)
+def subscribers_page(request: Request, _: None = Depends(admin_guard)):
+    rows = db.subscribers_by_target()
+    teachers = [r for r in rows if r['role'] == 'teacher']
+    groups = [r for r in rows if r['role'] == 'student']
+
+    return templates.TemplateResponse(
+        request, 'subscribers.html',
+        _common_context(request, teachers=teachers, groups=groups,
+                        building_names=BUILDING_NAMES),
+    )
+
+
 @app.post('/admin/sync')
 def run_sync_now(_: None = Depends(admin_guard)):
     sync.run_sync()

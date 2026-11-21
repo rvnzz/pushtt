@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Подписчики — Пуш-дэшборд ЧРТ{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+  <div>
+    <h3 class="mb-0">Подписчики на уведомления</h3>
+    <div class="text-secondary">
+      Преподаватели: {{ teachers|length }} · Группы: {{ groups|length }}
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card p-3 h-100">
+      <h5>👩‍🏫 Преподаватели</h5>
+      <table class="table table-deadline mb-0 align-middle">
+        <thead><tr><th>Кто</th><th>Устройств</th><th>Настройки</th><th>Обновлено</th></tr></thead>
+        <tbody>
+        {% for t in teachers %}
+          <tr>
+            <td>
+              <span class="badge text-bg-secondary badge-soft">t:{{ t.target_id }}</span>
+              {{ t.target_label or '—' }}
+              <div class="small text-secondary">{{ building_names.get(t.building_slug, t.building_slug) }}</div>
+            </td>
+            <td>{{ t.tokens }}</td>
+            <td class="small">
+              {% if t.changes %}<span class="badge text-bg-success badge-soft">изменения</span>{% endif %}
+              {% if t.tomorrow %}
+                <span class="badge text-bg-info badge-soft">завтра: {{ t.tomorrow_hours|sort|join(', ') }}ч</span>
+              {% endif %}
+              {% if not t.changes and not t.tomorrow %}<span class="text-secondary">только тест</span>{% endif %}
+            </td>
+            <td class="small text-secondary">{{ t.last_updated.strftime('%d.%m %H:%M') }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="text-secondary">Преподавателей пока нет.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card p-3 h-100">
+      <h5>👥 Группы</h5>
+      <table class="table table-deadline mb-0 align-middle">
+        <thead><tr><th>Кто</th><th>Устройств</th><th>Настройки</th><th>Обновлено</th></tr></thead>
+        <tbody>
+        {% for g in groups %}
+          <tr>
+            <td>
+              <span class="badge text-bg-secondary badge-soft">g:{{ g.target_id }}</span>
+              {{ g.target_label or '—' }}
+              <div class="small text-secondary">{{ building_names.get(g.building_slug, g.building_slug) }}</div>
+            </td>
+            <td>{{ g.tokens }}</td>
+            <td class="small">
+              {% if g.changes %}<span class="badge text-bg-success badge-soft">изменения</span>{% endif %}
+              {% if g.tomorrow %}
+                <span class="badge text-bg-info badge-soft">завтра: {{ g.tomorrow_hours|sort|join(', ') }}ч</span>
+              {% endif %}
+              {% if not g.changes and not g.tomorrow %}<span class="text-secondary">только тест</span>{% endif %}
+            </td>
+            <td class="small text-secondary">{{ g.last_updated.strftime('%d.%m %H:%M') }}</td>
+          </tr>
+        {% else %}
+          <tr><td colspan="4" class="text-secondary">Групп пока нет.</td></tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
