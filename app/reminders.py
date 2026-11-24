@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from . import bells, db, push, sync, timet
+from . import bells, cache, db, push, timet
 
 
 def run_reminders() -> None:
@@ -22,10 +22,7 @@ def run_reminders() -> None:
         if subscriber['last_tomorrow_date'] == tomorrow:
             continue
 
-        week = sync.cached_weeks.get(timet.monday_of(tomorrow))
-        if week is None:
-            week = timet.fetch_all_week(timet.monday_of(tomorrow))
-            sync.cached_weeks[timet.monday_of(tomorrow)] = week
+        week = cache.get_week(timet.monday_of(tomorrow))
 
         pair_numbers = timet.count_target_pairs_for_date(
             week, subscriber['role'], subscriber['building_slug'],

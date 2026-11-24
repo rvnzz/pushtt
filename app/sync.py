@@ -9,13 +9,10 @@ from __future__ import annotations
 import datetime as dt
 import time
 
-from . import db, push, timet
+from . import cache, db, push, timet
 from .hash import build_snapshots
 
 SYNC_INTERVAL_SECONDS = 15 * 60
-
-"""Недели последнего синка — reminders смотрят сюда без повторного fetch."""
-cached_weeks: dict[str, dict] = {}
 
 
 def run_sync(**kwargs) -> None:
@@ -39,7 +36,11 @@ def _run_sync() -> tuple[int, int]:
     this_monday = timet.monday_of(timet.today_iso())
     next_monday = timet.add_days_iso(this_monday, 7)
 
+    # синк диффит только по свежим данным — всегда прямой фетч
     weeks = [timet.fetch_all_week(this_monday), timet.fetch_all_week(next_monday)]
+    # свежие недели сразу в кеш: виджет/напоминания/дэшборд не ходят в timet до следующего синка
+    cache.put_week(this_monday, weeks[0])
+    cache.put_week(next_monday, weeks[1])
     fetched_dates = sorted({day['date'] for week in weeks for day in week['days']})
 
     before = db.load_snapshots(fetched_dates)

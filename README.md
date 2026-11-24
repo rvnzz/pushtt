@@ -24,6 +24,9 @@ docker compose logs -f server
 
 Приложение (без auth):
 - `POST /register`, `POST /unregister` — подписки (токен, роль, цель, настройки напоминаний)
+- `GET  /api/widget?group=&building=&date=` — сегодня + завтра для виджета
+- `GET  /api/week?date=&building=` — неделя в формате timet.eremin.tech
+  (из кеша; `building` — срез одного корпуса, пусто/`*` — все)
 - `GET  /api/bells?date=YYYY-MM-DD` — активное расписание звонков на дату (для будущего использования в приложении)
 - `GET  /health`
 
@@ -50,6 +53,14 @@ docker compose logs -f server
 `subscriptions`, `schedule_hashes` — работа контура;
 `bell_schedules` / `bell_items` / `bell_overrides` — звонки;
 `schedule_changes`, `push_log`, `sync_log` — журнал.
+
+## Кеш расписания
+
+Недели timet кешируются в памяти процесса (`app/cache.py`, TTL 15 мин =
+интервал синка, настраивается `WEEK_CACHE_TTL_SECONDS`). Синк после каждой
+сверки кладёт свежие недели в кеш; виджет, напоминания, страница
+`/schedule` и `/admin/targets.json` читают из кеша и ходят в timet только
+при протухании (параллельные запросы одной недели ждут один общий фетч).
 
 ## CI
 

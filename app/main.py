@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from . import bells, config, db, push, sync
+from . import bells, cache, config, db, push, sync
 from . import reminders, timet
 
 app = FastAPI(title='chrt-tt worker', docs_url=None, redoc_url=None)
@@ -181,7 +181,7 @@ BUILDINGS = [
 def schedule_page(request: Request, date: str = '', building: str = 'fulltime',
                   _: None = Depends(admin_guard)):
     date = date or today_iso()
-    week = timet.fetch_all_week(timet.monday_of(date))
+    week = cache.get_week(timet.monday_of(date))
     days = week['days']
 
     # звонки на выбранный день
@@ -234,7 +234,7 @@ def schedule_page(request: Request, date: str = '', building: str = 'fulltime',
 
 @app.get('/admin/targets.json')
 def targets_json(building: str = 'fulltime', _: None = Depends(admin_guard)):
-    week = timet.fetch_all_week(timet.monday_of(today_iso()))
+    week = cache.get_week(timet.monday_of(today_iso()))
     groups: dict[int, str] = {}
     teachers: dict[int, str] = {}
     for day in week['days']:
@@ -454,8 +454,7 @@ def api_widget(group: int = 0, building: str = 'fulltime', date: str = ''):
     out_days = []
     for label, target_date in (('today', date), ('tomorrow', tomorrow)):
         monday = timet.monday_of(target_date)
-        week = sync.cached_weeks.get(monday) or timet.fetch_all_week(monday)
-        sync.cached_weeks[monday] = week
+        week = cache.get_week(monday)
 
         pairs = []
         for day in week['days']:
@@ -509,6 +508,34 @@ def api_widget(group: int = 0, building: str = 'fulltime', date: str = ''):
         })
 
     return JSONResponse({'days': out_days})
+
+
+@app.get('/api/week')
+def api_week(date: str = '', building: str = ''):
+    """Неделя в формате timet.eremin.tech (из кеша, без auth).
+
+    date=YYYY-MM-DD (по умолчанию сегодня) — выбирает неделю;
+    building=slug — срез одного корпуса, пусто/'*' — все корпуса как в timet.
+    """
+    try:
+        date = date or timet.today_iso()
+        monday = timet.monday_of(date)
+    except ValueError:
+        return JSONResponse({'errors': ['date — ожидается YYYY-MM-DD']}, status_code=400)
+
+    week = cache.get_week(monday)
+    payload = dict(week)
+
+    if building and building != '*':
+        payload['days'] = [
+            {**day, 'buildings': [
+                b for b in day.get('buildings', [])
+                if b.get('building', {}).get('slug') == building
+            ]}
+            for day in week.get('days', [])
+        ]
+
+    return JSONResponse(payload)
 
 
 @app.get('/health')
